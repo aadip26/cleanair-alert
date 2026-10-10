@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cleanair
+      POSTGRES_PASSWORD: cleanair
+      POSTGRES_DB: cleanair
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  open-meteo:
+    image: ghcr.io/open-meteo/open-meteo
+    volumes:
+      - open-meteo-data:/app/data
+    environment:
+      REMOTE_DATA_DIRECTORY: https://openmeteo.s3.amazonaws.com/data/
+      CACHE_SIZE: 4GB
+      CACHE_META_SIZE: 4MB
+    ports:
+      - "127.0.0.1:8080:8080"
+    mem_limit: 3g
+    command:
+      [
+        "serve",
+        "--env",
+        "production",
+        "--hostname",
+        "0.0.0.0",
+        "--port",
+        "8080",
+      ]
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgres://cleanair:cleanair@postgres:5432/cleanair
+      AIR_QUALITY_SOURCE: sample
+      CHAT_MODE: stub
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      DATA_GOV_IN_API_KEY: ${DATA_GOV_IN_API_KEY:-}
+      OPEN_METEO_BASE_URL: http://open-meteo:8080
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+      - open-meteo
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4000
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  open-meteo-data:

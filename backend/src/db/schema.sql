@@ -1,0 +1,33 @@
+CREATE TABLE IF NOT EXISTS places (
+  slug TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  state TEXT NOT NULL,
+  latitude DOUBLE PRECISION NOT NULL,
+  longitude DOUBLE PRECISION NOT NULL,
+  cpcb_city TEXT
+);
+
+CREATE TABLE IF NOT EXISTS air_quality_cache (
+  slug TEXT PRIMARY KEY,
+  payload JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS climate_cache (
+  id SERIAL PRIMARY KEY,
+  slug TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (slug)
+);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id SERIAL PRIMARY KEY,
+  city_slug TEXT NOT NULL,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  chart JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS chart JSONB;
