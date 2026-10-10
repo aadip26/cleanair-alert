@@ -1,12 +1,9 @@
 import { Router } from "express";
 import { getAirQuality } from "../services/air-quality.js";
-import {
-  buildChatSystemPrompt,
-  groqComplete,
-  stubChatAnswer,
-} from "../services/groq.js";
+import { groqChatWithTools } from "../services/groq.js";
 import { getPool } from "../db/pool.js";
-import { pickChatChart, type ChatChart } from "../services/chat-chart.js";
+import { type ChatChart } from "../services/chat-chart.js";
+import { runStubChat } from "../services/chat-tools.js";
 
 const memoryMessages: {
   id: number;
@@ -36,9 +33,8 @@ chatRouter.post("/api/chat", async (req, res) => {
     return;
   }
 
-  const chart = pickChatChart(question.trim(), context, citySlug);
-
   let answer: string;
+  let chart: ChatChart | null = null;
   const chatMode = process.env.CHAT_MODE ?? "";
   const groqKey = process.env.GROQ_API_KEY;
 
@@ -47,25 +43,19 @@ chatRouter.post("/api/chat", async (req, res) => {
       res.status(503).json({ error: "GROQ_API_KEY is not configured" });
       return;
     }
-    answer = stubChatAnswer(
-      context.current.category,
-      context.history.direction,
-      question.trim(),
-    );
+    const stub = await runStubChat(question.trim(), citySlug);
+    answer = stub.answer;
+    chart = stub.chart;
   } else {
     try {
-      answer = await groqComplete(
+      const live = await groqChatWithTools(
         groqKey,
         process.env.GROQ_MODEL ?? "openai/gpt-oss-20b",
-        buildChatSystemPrompt(),
-        JSON.stringify({
-          question,
-          officialCurrent: context.current,
-          modelOutlook: context.outlook,
-          modelHistory: context.history,
-          climate: context.climate.places.find((p) => p.slug === citySlug),
-        }),
+        citySlug,
+        question.trim(),
       );
+      answer = live.answer;
+      chart = live.chart;
     } catch (e) {
       res.status(502).json({
         error: e instanceof Error ? e.message : "Groq request failed",

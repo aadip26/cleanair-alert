@@ -63,7 +63,7 @@ test.describe("CleanAir Alert dashboard", () => {
       "How has air quality changed over the last 10 years?",
     );
     await page.getByTestId("chat-submit").click();
-    await expect(page.getByTestId("chat-answer").first()).toContainText("2022");
+    await expect(page.getByTestId("chat-answer").last()).toContainText("2022");
   });
 
   test("historical drought analysis map and year slider", async ({
@@ -94,6 +94,20 @@ test.describe("CleanAir Alert dashboard", () => {
     );
   });
 
+  test("assistant drought question lists Pune for 2022", async ({ page }) => {
+    await page.goto("/");
+    await openAssistant(page);
+    await page
+      .getByTestId("chat-input")
+      .fill("in 2022 what are the city in india with drought condition");
+    await page.getByTestId("chat-submit").click();
+    await expect(page.getByTestId("chat-answer").last()).toContainText("Pune");
+    await expect(page.getByTestId("chat-answer").last()).not.toContainText(
+      "Very Poor",
+    );
+    await expect(page.getByTestId("assistant-chart").last()).toBeVisible();
+  });
+
   test("assistant rain question shows chart and history persists", async ({
     page,
   }) => {
@@ -103,10 +117,8 @@ test.describe("CleanAir Alert dashboard", () => {
       "How is rain this year compared with 2025?",
     );
     await page.getByTestId("chat-submit").click();
-    await expect(page.getByTestId("chat-answer").first()).toContainText(
-      "CPCB station data",
-    );
-    await expect(page.getByTestId("assistant-chart").first()).toBeVisible();
+    await expect(page.getByTestId("chat-answer").last()).toContainText("mm");
+    await expect(page.getByTestId("assistant-chart").last()).toBeVisible();
     await page.getByRole("tab", { name: "History" }).click();
     await expect(page.getByTestId("chat-history")).toContainText(
       "How is rain this year compared with 2025?",
